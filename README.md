@@ -7,7 +7,19 @@ Plugin Claude Code pour garder une mémoire de projet relue par toi, et en tirer
 
 Les registres vivent dans `<projet>/.claude/memory/`. C'est du Markdown à plat, tu peux ouvrir ce dossier comme vault Obsidian. Les rapports validés vont dans `reports/`.
 
-## Installer (développement)
+## Installer
+
+Dans Claude Code, une seule fois:
+
+```
+/plugin install carnet --marketplace anthime24/carnet
+```
+
+Les commandes `/carnet:wrapup` et `/carnet:report` sont ensuite disponibles dans toutes tes sessions. Pour mettre à jour: `/plugin marketplace update carnet`.
+
+## Développer le plugin
+
+Pour essayer une copie locale sans l'installer, lance Claude avec le flag, au démarrage de la session:
 
 ```bash
 claude --plugin-dir ~/Documents/carnet
