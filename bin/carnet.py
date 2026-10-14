@@ -27,6 +27,13 @@ def build_parser():
         "add", parents=[common], help="ajoute une entrée (objet JSON sur l'entrée standard)"
     )
     add.add_argument("registre", choices=registers.ALL_REGISTERS)
+
+    set_status = sub.add_parser(
+        "set-status", parents=[common], help="change le statut d'une entrée"
+    )
+    set_status.add_argument("id")
+    set_status.add_argument("statut")
+    set_status.add_argument("--solution", help="solution (blocages seulement)")
     return parser
 
 
@@ -42,7 +49,11 @@ def cmd_add(args, root):
     return registers.add(root, args.registre, data)
 
 
-HANDLERS = {"init": cmd_init, "add": cmd_add}
+def cmd_set_status(args, root):
+    return registers.set_status(root, args.id, args.statut, solution=args.solution)
+
+
+HANDLERS = {"init": cmd_init, "add": cmd_add, "set-status": cmd_set_status}
 
 
 def emit(payload, code=0):
