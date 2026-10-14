@@ -22,6 +22,11 @@ def build_parser():
     sub = parser.add_subparsers(dest="command", required=True)
 
     sub.add_parser("init", parents=[common], help="crée .claude/memory/ et les registres")
+
+    add = sub.add_parser(
+        "add", parents=[common], help="ajoute une entrée (objet JSON sur l'entrée standard)"
+    )
+    add.add_argument("registre", choices=registers.ALL_REGISTERS)
     return parser
 
 
@@ -29,7 +34,15 @@ def cmd_init(args, root):
     return registers.init(root)
 
 
-HANDLERS = {"init": cmd_init}
+def cmd_add(args, root):
+    try:
+        data = json.loads(sys.stdin.read())
+    except json.JSONDecodeError as exc:
+        raise CarnetError("json_invalide", str(exc))
+    return registers.add(root, args.registre, data)
+
+
+HANDLERS = {"init": cmd_init, "add": cmd_add}
 
 
 def emit(payload, code=0):

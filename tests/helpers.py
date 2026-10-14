@@ -37,3 +37,22 @@ def run_cli(*args, root=None, stdin=None, env_extra=None):
     )
     out = json.loads(proc.stdout) if proc.stdout.strip() else None
     return proc.returncode, out, proc.stderr
+
+
+DECISION = {
+    "titre": "Registres par projet",
+    "decision": "Un dossier .claude/memory par projet",
+    "pourquoi": "Chaque projet reste autonome",
+    "alternatives": "Un vault central",
+}
+LEARNING = {
+    "titre": "Lire le schéma avant d'écrire la requête",
+    "pattern": "Interroger la vraie base évite les colonnes imaginaires",
+    "contexte": "Lecture de claude-mem",
+    "application": "Inspecter les données réelles d'abord",
+}
+BLOCKER = {
+    "titre": "Chemin du script introuvable",
+    "friction": "La skill ne trouvait pas carnet.py",
+    "cause": "Mauvais niveau de remontée dans le chemin",
+}

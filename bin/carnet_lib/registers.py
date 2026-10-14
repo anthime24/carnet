@@ -99,3 +99,173 @@ def init(root):
             atomic_write(path, initial_text(name))
             created.append(path.name)
     return {"memory_dir": str(mem), "created": created, "existing": existing}
+
+
+DATE_RE = re.compile(r"^\d{4}-\d{2}-\d{2}$")
+REF_RE = re.compile(r"\[\[([A-Z]{3}-\d+)\]\]")
+
+
+def _bad(path, number, message):
+    return CarnetError("registre_illisible", f"{path.name}:{number}: {message}")
+
+
+def _lines(text):
+    return [line.rstrip("\r") for line in text.split("\n")]
+
+
+def _read(root, name):
+    path = memory_dir(root) / f"{name}.md"
+    if not path.exists():
+        raise CarnetError("registre_absent", f"{path} n'existe pas, lancer `carnet.py init`")
+    return path, _lines(path.read_text(encoding="utf-8"))
+
+
+def _save(path, lines):
+    while lines and lines[-1] == "":
+        lines.pop()
+    atomic_write(path, "\n".join(lines) + "\n")
+
+
+def _with_block(lines, block):
+    out = list(lines)
+    while out and out[-1] == "":
+        out.pop()
+    return out + [""] + block
+
+
+def _check_header(name, lines, path):
+    if not lines or lines[0] != "---":
+        raise _bad(path, 1, "header YAML absent")
+    try:
+        end = lines.index("---", 1)
+    except ValueError:
+        raise _bad(path, 1, "header YAML non fermé")
+    meta = {}
+    for line in lines[1:end]:
+        key, _, value = line.partition(":")
+        meta[key.strip()] = value.strip()
+    if meta.get("registre") != name:
+        raise _bad(path, 2, f"« registre: {name} » attendu dans le header")
+    if name != JOURNAL and meta.get("prefixe") != REGISTERS[name]["prefix"]:
+        raise _bad(path, 3, f"« prefixe: {REGISTERS[name]['prefix']} » attendu dans le header")
+
+
+def _cells(line):
+    return [cell.strip() for cell in line.strip().strip("|").split("|")]
+
+
+def _locate_index(name, lines, path):
+    labels = [label for _, label in REGISTERS[name]["index"]]
+    try:
+        start = lines.index("## Index")
+    except ValueError:
+        raise _bad(path, 1, "section « ## Index » absente")
+    expected = "| " + " | ".join(labels) + " |"
+    if start + 2 >= len(lines) or lines[start + 1].strip() != expected:
+        raise _bad(path, start + 2, f"en-tête du tableau attendu: {expected}")
+    if not re.match(r"^\|[-| :]+\|$", lines[start + 2].strip()):
+        raise _bad(path, start + 3, "ligne de séparation du tableau attendue")
+    first = start + 3
+    end = first
+    while end < len(lines) and lines[end].startswith("|"):
+        if len(_cells(lines[end])) != len(labels):
+            raise _bad(path, end + 1, f"{len(labels)} colonnes attendues")
+        end += 1
+    return first, end
+
+
+def _next_id(spec, lines, first, end):
+    numbers = [0]
+    heading = re.compile(rf"^## {spec['prefix']}-(\d+) · ")
+    for line in lines:
+        match = heading.match(line)
+        if match:
+            numbers.append(int(match.group(1)))
+    for line in lines[first:end]:
+        match = re.fullmatch(rf"{spec['prefix']}-(\d+)", _cells(line)[0])
+        if match:
+            numbers.append(int(match.group(1)))
+    return f"{spec['prefix']}-{max(numbers) + 1:03d}"
+
+
+def _day(data, today):
+    day = clean(data.get("date") or today or today_iso())
+    if not DATE_RE.match(day):
+        raise CarnetError("date_invalide", day)
+    return day
+
+
+def known_ids(root):
+    ids = set()
+    for name, spec in REGISTERS.items():
+        path = memory_dir(root) / f"{name}.md"
+        if path.exists():
+            text = path.read_text(encoding="utf-8")
+            ids.update(re.findall(rf"^## ({spec['prefix']}-\d+) · ", text, re.M))
+    return ids
+
+
+def _reference_warnings(root, texts, own_id=None):
+    known = known_ids(root)
+    if own_id:
+        known.add(own_id)
+    cited = set()
+    for text in texts:
+        cited.update(REF_RE.findall(text))
+    return [f"Référence [[{ref}]] introuvable" for ref in sorted(cited - known)]
+
+
+def _normalize(spec, data, today):
+    missing = [key for key in spec["required"] if not clean(data.get(key, ""))]
+    if missing:
+        raise CarnetError("champs_manquants", ", ".join(missing))
+    entry = {"date": _day(data, today), "titre": clean(data["titre"])}
+    for key, _ in spec["fields"]:
+        entry[key] = clean(data.get(key) or spec["defaults"].get(key, ""))
+    if spec["statuses"] and entry["statut"] not in spec["statuses"]:
+        raise CarnetError(
+            "statut_invalide",
+            f"{entry['statut']} (valeurs possibles: {', '.join(spec['statuses'])})",
+        )
+    return entry
+
+
+def _add_journal(root, data, today):
+    raw = data.get("lignes") or []
+    if isinstance(raw, str):
+        raw = [raw]
+    lignes = [clean(line) for line in raw if clean(line)]
+    suite = clean(data.get("suite", ""))
+    missing = [key for key, value in (("lignes", lignes), ("suite", suite)) if not value]
+    if missing:
+        raise CarnetError("champs_manquants", ", ".join(missing))
+    day = _day(data, today)
+    path, lines = _read(root, JOURNAL)
+    _check_header(JOURNAL, lines, path)
+    warnings = _reference_warnings(root, lignes + [suite])
+    _save(path, _with_block(lines, [f"## {day}", *lignes, f"Suite: {suite}"]))
+    return {"id": None, "date": day, "file": str(path), "warnings": warnings}
+
+
+def add(root, name, data, today=None):
+    if name not in ALL_REGISTERS:
+        raise CarnetError("registre_inconnu", name)
+    if not isinstance(data, dict):
+        raise CarnetError("entree_invalide", "un objet JSON est attendu")
+    if name == JOURNAL:
+        return _add_journal(root, data, today)
+    spec = REGISTERS[name]
+    entry = _normalize(spec, data, today)
+    path, lines = _read(root, name)
+    _check_header(name, lines, path)
+    first, end = _locate_index(name, lines, path)
+    entry_id = _next_id(spec, lines, first, end)
+    warnings = _reference_warnings(root, list(entry.values()), own_id=entry_id)
+    cells = [
+        entry_id if key == "id" else entry[key].replace("|", "/") for key, _ in spec["index"]
+    ]
+    lines.insert(end, "| " + " | ".join(cells) + " |")
+    block = [f"## {entry_id} · {entry['titre']}", f"- **Date:** {entry['date']}"]
+    block += [f"- **{label}:** {entry[key]}".rstrip() for key, label in spec["fields"]]
+    _save(path, _with_block(lines, block))
+    return {"id": entry_id, "file": str(path), "warnings": warnings}
