@@ -349,3 +349,62 @@ def set_status(root, entry_id, status, solution=None, today=None):
             _remove_line(lines, heading, "Résolu le")
     _save(path, lines)
     return {"id": entry_id, "statut": status, "file": str(path)}
+
+
+LABEL_RE = re.compile(r"^- \*\*(.+?):\*\*\s*(.*)$")
+JOURNAL_HEADING_RE = re.compile(r"^## (\d{4}-\d{2}-\d{2})\s*$")
+
+
+def read_entries(root, name):
+    spec = REGISTERS[name]
+    path = memory_dir(root) / f"{name}.md"
+    if not path.exists():
+        return []
+    labels = {label: key for key, label in spec["fields"]}
+    labels["Date"] = "date"
+    labels["Résolu le"] = "resolu_le"
+    heading = re.compile(rf"^## ({spec['prefix']}-\d+) · (.*)$")
+    entries, current = [], None
+    for line in _lines(path.read_text(encoding="utf-8")):
+        match = heading.match(line)
+        if match:
+            current = {"id": match.group(1), "titre": match.group(2).strip(), "date": ""}
+            current.update({key: "" for key, _ in spec["fields"]})
+            entries.append(current)
+        elif line.startswith("## "):
+            current = None
+        elif current is not None:
+            label = LABEL_RE.match(line)
+            if label and label.group(1) in labels:
+                current[labels[label.group(1)]] = label.group(2).strip()
+    return entries
+
+
+def read_journal(root):
+    path = memory_dir(root) / f"{JOURNAL}.md"
+    if not path.exists():
+        return []
+    entries, current = [], None
+    for line in _lines(path.read_text(encoding="utf-8")):
+        match = JOURNAL_HEADING_RE.match(line)
+        if match:
+            current = {"date": match.group(1), "lignes": [], "suite": ""}
+            entries.append(current)
+        elif line.startswith("## "):
+            current = None
+        elif current is not None and line.strip():
+            if line.startswith("Suite:"):
+                current["suite"] = line[len("Suite:"):].strip()
+            else:
+                current["lignes"].append(line.strip())
+    return entries
+
+
+def last_dates(root):
+    result = {}
+    for name in REGISTERS:
+        dates = [entry["date"] for entry in read_entries(root, name) if entry["date"]]
+        result[name] = max(dates) if dates else None
+    journal_dates = [entry["date"] for entry in read_journal(root)]
+    result[JOURNAL] = max(journal_dates) if journal_dates else None
+    return result
