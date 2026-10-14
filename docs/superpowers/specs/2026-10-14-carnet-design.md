@@ -43,7 +43,8 @@ carnet/
     perso.md                 gabarit + règles de style
     entreprise.md            gabarit + règles de style
     style.txt                expressions à éviter, une par ligne
-  bin/carnet.py              script Python 3.9+, bibliothèque standard seulement
+  bin/carnet.py              point d'entrée du script (Python 3.9+, bibliothèque standard seulement)
+  bin/carnet_lib/            modules du script: registers, sources, context, reports, style
   tests/                     tests unittest
   docs/superpowers/specs/    cette spec
 ```
@@ -90,7 +91,7 @@ Même forme. Champs: `Date`, `Pattern observé`, `Contexte`, `Application future
 
 ### blockers.md (préfixe BLK)
 
-Même forme. Champs: `Date`, `Friction`, `Cause réelle`, `Solution`, `Statut`. Statuts: `ouvert`, `résolu`. Index: `ID | Date | Titre | Statut`. `Solution` reste vide tant que le blocage est ouvert.
+Même forme. Champs: `Date`, `Friction`, `Cause réelle`, `Solution`, `Statut`. Statuts: `ouvert`, `résolu`. Index: `ID | Date | Titre | Statut`. `Solution` reste vide tant que le blocage est ouvert. Quand `set-status` passe un blocage à `résolu`, il ajoute la ligne `- **Résolu le:** AAAA-MM-JJ` après `Statut` (et la retire si le blocage est rouvert).
 
 ### journal.md
 
@@ -117,7 +118,7 @@ Toutes les commandes acceptent `--project-root <chemin>` (défaut: dossier coura
 | `init` | Crée `.claude/memory/` et les quatre registres vides (header + index). N'écrase jamais un fichier existant. |
 | `add <registre>` | Lit l'entrée en JSON sur l'entrée standard. Attribue l'ID suivant, ajoute l'entrée, ajoute la ligne d'index. Renvoie l'ID et d'éventuels avertissements. Pour `journal`, ajoute l'entrée du jour. |
 | `set-status <ID> <statut>` | Change le statut d'une entrée (entrée et ligne d'index). Pour un blocage résolu, accepte `--solution "..."`. |
-| `context [--since <date>] [--until <date>]` | Rassemble la matière brute, voir plus bas. |
+| `context [--since <date\|journal\|rapport>] [--until <date>] [--gabarit <g>]` | Rassemble la matière brute, voir plus bas. `journal` = depuis la dernière entrée du journal, `rapport` = depuis le dernier rapport de `--gabarit`. |
 | `last-report <gabarit>` | Renvoie la date et le chemin du dernier rapport de ce gabarit, ou `null`. |
 | `save-report <gabarit> --from <fichier> --du <date> --au <date>` | Enregistre le rapport dans `reports/` et renvoie le chemin avec le résultat du contrôle de style. |
 | `style-check <gabarit> --from <fichier>` | Applique seulement le contrôle de style. |
@@ -128,13 +129,14 @@ Les écritures passent par un fichier temporaire puis un renommage. Si un regist
 
 ```json
 {
-  "project": {"root": "...", "name": "..."},
+  "project": {"root": "...", "name": "...", "initialized": true},
   "since": "2026-10-01", "until": "2026-10-14",
   "registers": {
     "decisions": [...], "learnings": [...],
     "blockers": {"opened": [...], "open": [...], "resolved": [...]},
     "journal": [...],
-    "last_journal_date": "2026-10-12"
+    "last_journal_date": "2026-10-12",
+    "last_dates": {"decisions": "...", "learnings": null, "blockers": "...", "journal": "..."}
   },
   "previous_report": {"gabarit": "entreprise", "date": "...", "path": "..."},
   "claude_mem": {
@@ -159,7 +161,9 @@ Les écritures passent par un fichier temporaire puis un renommage. Si un regist
 - Base: `~/.claude-mem/claude-mem.db`, chemin remplaçable par la variable d'environnement `CARNET_CLAUDE_MEM_DB` (utile pour les tests).
 - Ouverture en lecture seule: `sqlite3.connect("file:<chemin>?mode=ro", uri=True)`, délai d'attente court.
 - Requête sur `session_summaries` jointe à `sdk_sessions` par `memory_session_id`. Champs lus: `request, investigated, learned, completed, next_steps, files_edited, created_at`.
-- Correspondance au projet: d'abord sur `sdk_sessions.cwd` (le dossier racine ou un sous-dossier). Si rien ne correspond, repli sur `project` égal au nom du dossier racine, et `match` vaut alors `"name"` pour que la skill puisse le signaler.
+- Correspondance au projet: sessions dont le `cwd` est la racine ou un sous-dossier, plus les sessions de même `project` que le nom du dossier racine dont le `cwd` est absent ou n'est pas un chemin POSIX (sessions enregistrées sous un autre système). Si rien ne correspond, repli sur le seul `project`. `match` vaut `"cwd"`, `"name"` ou `"cwd+name"`.
+- Chaque champ de résumé est tronqué à 500 caractères. La date d'un résumé est la partie date de `created_at` (UTC).
+- Les résumés réels sont rédigés en anglais: les skills et les gabarits demandent de les réécrire en français.
 - Si la base est absente, verrouillée, ou si une table ou colonne attendue manque, `claude_mem.status` vaut `"unavailable"` avec une `reason`. Le reste de `context` n'est pas affecté.
 
 ### graphify
