@@ -7,7 +7,7 @@ from pathlib import Path
 
 sys.path.insert(0, str(Path(__file__).resolve().parent))
 
-from carnet_lib import registers, reports, style  # noqa: E402
+from carnet_lib import context, registers, reports, style  # noqa: E402
 from carnet_lib.errors import CarnetError  # noqa: E402
 
 PLUGIN_ROOT = Path(__file__).resolve().parent.parent
@@ -55,6 +55,13 @@ def build_parser():
     save_report.add_argument("--from", dest="source", required=True, help="fichier du rapport")
     save_report.add_argument("--du", required=True, help="début de la période (AAAA-MM-JJ ou « début »)")
     save_report.add_argument("--au", required=True, help="fin de la période (AAAA-MM-JJ)")
+
+    ctx = sub.add_parser(
+        "context", parents=[common], help="rassemble la matière brute (registres, claude-mem, graphify)"
+    )
+    ctx.add_argument("--since", help="AAAA-MM-JJ, « journal » ou « rapport » (avec --gabarit)")
+    ctx.add_argument("--until", help="AAAA-MM-JJ (défaut: aujourd'hui)")
+    ctx.add_argument("--gabarit", choices=GABARITS, help="gabarit visé (pour previous_report)")
     return parser
 
 
@@ -96,6 +103,10 @@ def cmd_save_report(args, root):
     return reports.save_report(root, args.gabarit, body, args.du, args.au, phrases)
 
 
+def cmd_context(args, root):
+    return context.build(root, since=args.since, until=args.until, gabarit=args.gabarit)
+
+
 HANDLERS = {
     "init": cmd_init,
     "add": cmd_add,
@@ -103,6 +114,7 @@ HANDLERS = {
     "style-check": cmd_style_check,
     "last-report": cmd_last_report,
     "save-report": cmd_save_report,
+    "context": cmd_context,
 }
 
 
