@@ -1,5 +1,6 @@
 import json
 import os
+import sqlite3
 import subprocess
 import sys
 import tempfile
@@ -56,3 +57,36 @@ BLOCKER = {
     "friction": "La skill ne trouvait pas carnet.py",
     "cause": "Mauvais niveau de remontée dans le chemin",
 }
+
+
+def make_claude_mem_db(path, sessions, summaries):
+    """Fausse base claude-mem, avec les colonnes réelles lues par le plugin (claude-mem 13.37.0).
+
+    sessions:  [(memory_session_id, project, cwd)]
+    summaries: [(memory_session_id, project, created_at, request, completed, next_steps, files_edited)]
+    """
+    conn = sqlite3.connect(str(path))
+    conn.executescript(
+        """
+        CREATE TABLE sdk_sessions (
+            id INTEGER PRIMARY KEY AUTOINCREMENT, memory_session_id TEXT UNIQUE,
+            project TEXT NOT NULL, cwd TEXT);
+        CREATE TABLE session_summaries (
+            id INTEGER PRIMARY KEY AUTOINCREMENT, memory_session_id TEXT NOT NULL,
+            project TEXT NOT NULL, request TEXT, investigated TEXT, learned TEXT,
+            completed TEXT, next_steps TEXT, files_read TEXT, files_edited TEXT,
+            created_at TEXT NOT NULL, created_at_epoch INTEGER NOT NULL);
+        """
+    )
+    conn.executemany(
+        "INSERT INTO sdk_sessions (memory_session_id, project, cwd) VALUES (?, ?, ?)", sessions
+    )
+    for i, (sid, project, created_at, request, completed, next_steps, files) in enumerate(summaries):
+        conn.execute(
+            "INSERT INTO session_summaries (memory_session_id, project, request, investigated, "
+            "learned, completed, next_steps, files_edited, created_at, created_at_epoch) "
+            "VALUES (?, ?, ?, '', '', ?, ?, ?, ?, ?)",
+            (sid, project, request, completed, next_steps, files, created_at, i),
+        )
+    conn.commit()
+    conn.close()
