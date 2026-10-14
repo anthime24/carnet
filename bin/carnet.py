@@ -7,10 +7,12 @@ from pathlib import Path
 
 sys.path.insert(0, str(Path(__file__).resolve().parent))
 
-from carnet_lib import registers  # noqa: E402
+from carnet_lib import registers, style  # noqa: E402
 from carnet_lib.errors import CarnetError  # noqa: E402
 
 PLUGIN_ROOT = Path(__file__).resolve().parent.parent
+STYLE_FILE = PLUGIN_ROOT / "templates" / "style.txt"
+GABARITS = ("perso", "entreprise")
 
 
 def build_parser():
@@ -34,6 +36,12 @@ def build_parser():
     set_status.add_argument("id")
     set_status.add_argument("statut")
     set_status.add_argument("--solution", help="solution (blocages seulement)")
+
+    style_check = sub.add_parser(
+        "style-check", parents=[common], help="contrôle de style d'un brouillon de rapport"
+    )
+    style_check.add_argument("gabarit", choices=GABARITS)
+    style_check.add_argument("--from", dest="source", required=True, help="fichier du brouillon")
     return parser
 
 
@@ -53,7 +61,24 @@ def cmd_set_status(args, root):
     return registers.set_status(root, args.id, args.statut, solution=args.solution)
 
 
-HANDLERS = {"init": cmd_init, "add": cmd_add, "set-status": cmd_set_status}
+def _read_text(path):
+    try:
+        return Path(path).read_text(encoding="utf-8")
+    except OSError as exc:
+        raise CarnetError("fichier_illisible", f"{path}: {exc}")
+
+
+def cmd_style_check(args, root):
+    text = _read_text(args.source)
+    return {"warnings": style.check(text, args.gabarit, style.load_phrases(STYLE_FILE))}
+
+
+HANDLERS = {
+    "init": cmd_init,
+    "add": cmd_add,
+    "set-status": cmd_set_status,
+    "style-check": cmd_style_check,
+}
 
 
 def emit(payload, code=0):

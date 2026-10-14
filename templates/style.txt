@@ -1,0 +1,12 @@
+# Une expression par ligne. Les lignes qui commencent par # sont ignorées.
+# Ajoute ici les tics que tu repères dans les rapports générés.
+il est important de noter
+il convient de
+n'hésitez pas
+dans le cadre de
+force est de
+je tiens à
+en conclusion
+en résumé
+robuste
+solution complète
