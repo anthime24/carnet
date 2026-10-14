@@ -7,12 +7,12 @@ from pathlib import Path
 
 sys.path.insert(0, str(Path(__file__).resolve().parent))
 
-from carnet_lib import registers, style  # noqa: E402
+from carnet_lib import registers, reports, style  # noqa: E402
 from carnet_lib.errors import CarnetError  # noqa: E402
 
 PLUGIN_ROOT = Path(__file__).resolve().parent.parent
 STYLE_FILE = PLUGIN_ROOT / "templates" / "style.txt"
-GABARITS = ("perso", "entreprise")
+GABARITS = reports.GABARITS
 
 
 def build_parser():
@@ -42,6 +42,19 @@ def build_parser():
     )
     style_check.add_argument("gabarit", choices=GABARITS)
     style_check.add_argument("--from", dest="source", required=True, help="fichier du brouillon")
+
+    last_report = sub.add_parser(
+        "last-report", parents=[common], help="date et chemin du dernier rapport d'un gabarit"
+    )
+    last_report.add_argument("gabarit", choices=GABARITS)
+
+    save_report = sub.add_parser(
+        "save-report", parents=[common], help="enregistre un rapport validé dans reports/"
+    )
+    save_report.add_argument("gabarit", choices=GABARITS)
+    save_report.add_argument("--from", dest="source", required=True, help="fichier du rapport")
+    save_report.add_argument("--du", required=True, help="début de la période (AAAA-MM-JJ ou « début »)")
+    save_report.add_argument("--au", required=True, help="fin de la période (AAAA-MM-JJ)")
     return parser
 
 
@@ -73,11 +86,23 @@ def cmd_style_check(args, root):
     return {"warnings": style.check(text, args.gabarit, style.load_phrases(STYLE_FILE))}
 
 
+def cmd_last_report(args, root):
+    return reports.last_report(root, args.gabarit)
+
+
+def cmd_save_report(args, root):
+    body = _read_text(args.source)
+    phrases = style.load_phrases(STYLE_FILE)
+    return reports.save_report(root, args.gabarit, body, args.du, args.au, phrases)
+
+
 HANDLERS = {
     "init": cmd_init,
     "add": cmd_add,
     "set-status": cmd_set_status,
     "style-check": cmd_style_check,
+    "last-report": cmd_last_report,
+    "save-report": cmd_save_report,
 }
 
 
