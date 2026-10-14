@@ -1,0 +1,9 @@
+{
+  "name": "carnet",
+  "description": "Registres de projet validés (décisions, apprentissages, blocages, journal) et rapports de session PERSO et ENTREPRISE, à partir de claude-mem et graphify",
+  "version": "0.1.0",
+  "author": {
+    "name": "anthime24"
+  },
+  "keywords": ["memory", "reports", "wrapup", "journal"]
+}
