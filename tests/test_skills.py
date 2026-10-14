@@ -26,3 +26,11 @@ class SkillsTest(unittest.TestCase):
         text = self.skill("wrapup")
         for phrase in ["Attends l'accord", "Suite:", "--since journal", "last_dates"]:
             self.assertIn(phrase, text)
+
+    def test_report(self):
+        self.check_skill("report", {"context", "style-check", "save-report"})
+        text = self.skill("report")
+        for phrase in ["--since rapport", "--depuis", "--tout", "templates/perso.md", "templates/entreprise.md", "non validé"]:
+            self.assertIn(phrase, text)
+        for name in ("perso.md", "entreprise.md"):
+            self.assertTrue((helpers.ROOT / "templates" / name).is_file())
