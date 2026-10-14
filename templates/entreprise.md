@@ -35,7 +35,8 @@ Tout vient de la sortie de `context`. Rien d'autre.
 ## Règles de fond
 
 - Écris pour un lecteur extérieur. Pas d'IDs (`BDR-001`), pas de `[[ ]]`, pas de jargon de l'outil, pas de nom de fichier interne sauf s'il parle au lecteur.
-- Reformule la cause réelle d'un blocage avec sobriété: ce qui coince, pas qui a mal fait quoi, ni les galères de l'auteur.
+- La `cause` et la `friction` d'un blocage servent à comprendre la situation. Ne les cite jamais telles quelles: reformule avec sobriété ce qui coince, pas qui a mal fait quoi, ni les galères de l'auteur.
+- Les lignes du journal peuvent citer des IDs (`BLK-001`) ou des `[[ ]]`: retire-les.
 - Ne raconte pas le chemin parcouru. Dis où on en est.
 - Chaque affirmation vient des registres ou de claude-mem. N'invente ni date, ni chiffre, ni avancement.
 - Les résumés claude-mem sont souvent en anglais. Réécris-les en français.

@@ -230,11 +230,21 @@ def _normalize(spec, data, today):
     return entry
 
 
+def _journal_line(line):
+    """Une ligne de journal ne doit pas ressembler à un titre ni à la ligne « Suite: »."""
+    text = clean(line)
+    if text.startswith("#") or text.startswith("Suite:"):
+        return "- " + text
+    return text
+
+
 def _add_journal(root, data, today):
     raw = data.get("lignes") or []
     if isinstance(raw, str):
         raw = [raw]
-    lignes = [clean(line) for line in raw if clean(line)]
+    if not isinstance(raw, list) or any(isinstance(item, (list, dict)) for item in raw):
+        raise CarnetError("entree_invalide", "« lignes » doit être une liste de phrases")
+    lignes = [_journal_line(line) for line in raw if clean(line)]
     suite = clean(data.get("suite", ""))
     missing = [key for key, value in (("lignes", lignes), ("suite", suite)) if not value]
     if missing:

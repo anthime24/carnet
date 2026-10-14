@@ -131,6 +131,27 @@ class AddTest(helpers.ProjectCase):
             registers.add(self.root, "journal", {"suite": "x"})
         self.assertEqual(ctx.exception.detail, "lignes")
 
+    def test_journal_ligne_qui_ressemble_a_une_structure(self):
+        data = {"lignes": ["## 2026-01-01", "Suite: fausse", "normale"], "suite": "vraie"}
+        registers.add(self.root, "journal", data, today="2026-10-14")
+        self.assertEqual(
+            registers.read_journal(self.root),
+            [
+                {
+                    "date": "2026-10-14",
+                    "lignes": ["- ## 2026-01-01", "- Suite: fausse", "normale"],
+                    "suite": "vraie",
+                }
+            ],
+        )
+
+    def test_journal_lignes_de_mauvais_type(self):
+        for lignes in (5, {"a": 1}, [["x"]]):
+            with self.subTest(lignes=lignes):
+                with self.assertRaises(CarnetError) as ctx:
+                    registers.add(self.root, "journal", {"lignes": lignes, "suite": "x"})
+                self.assertEqual(ctx.exception.error, "entree_invalide")
+
     def test_cli_add_lit_le_json_sur_l_entree_standard(self):
         code, out, _ = helpers.run_cli(
             "add", "learnings", root=self.root, stdin=json.dumps(helpers.LEARNING)

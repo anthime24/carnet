@@ -35,5 +35,10 @@ class TemplatesTest(unittest.TestCase):
                 self.assertIn("## D'où vient chaque section", text)
                 self.assertIn("style-check", text)
 
+    def test_entreprise_ne_laisse_pas_fuiter_le_franc_parler(self):
+        text = self.read("entreprise.md")
+        self.assertIn("Ne les cite jamais", text)
+        self.assertIn("citer des IDs", text)
+
     def test_entreprise_fixe_la_limite_de_longueur(self):
         self.assertIn("250 mots", self.read("entreprise.md"))

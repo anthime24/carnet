@@ -132,6 +132,10 @@ def main(argv=None):
         return emit(HANDLERS[args.command](args, root))
     except CarnetError as exc:
         return emit({"error": exc.error, "detail": exc.detail}, 1)
+    except UnicodeDecodeError as exc:
+        return emit({"error": "encodage_invalide", "detail": f"fichier non UTF-8: {exc}"}, 1)
+    except OSError as exc:
+        return emit({"error": "erreur_fichier", "detail": str(exc)}, 1)
 
 
 if __name__ == "__main__":
