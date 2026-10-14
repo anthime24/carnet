@@ -14,6 +14,7 @@
         "name": "anthime24"
       },
       "homepage": "https://github.com/anthime24/carnet",
+      "license": "MIT",
       "keywords": ["memory", "reports", "wrapup", "journal"]
     }
   ]

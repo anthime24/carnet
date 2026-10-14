@@ -33,6 +33,10 @@ python3 -m unittest discover -s tests
 
 Python 3.9+, aucune dépendance.
 
+## Licence
+
+MIT, voir le fichier `LICENSE`.
+
 ## Pour changer le ton
 
 Ajoute les expressions que tu repères dans les rapports générés à `templates/style.txt`, une par ligne. Les règles de style complètes sont dans `templates/perso.md` et `templates/entreprise.md`.

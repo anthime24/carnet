@@ -18,6 +18,14 @@ class ManifestTest(unittest.TestCase):
         self.assertEqual(data["repository"], "https://github.com/anthime24/carnet")
 
 
+    def test_licence_permissive(self):
+        data = json.loads((helpers.ROOT / ".claude-plugin" / "plugin.json").read_text(encoding="utf-8"))
+        self.assertEqual(data["license"], "MIT")
+        text = (helpers.ROOT / "LICENSE").read_text(encoding="utf-8")
+        self.assertTrue(text.startswith("MIT License"))
+        self.assertIn("Copyright (c) 2026 anthime24", text)
+
+
 class MarketplaceTest(unittest.TestCase):
     def load(self, name):
         path = helpers.ROOT / ".claude-plugin" / name
@@ -34,3 +42,4 @@ class MarketplaceTest(unittest.TestCase):
         self.assertEqual(entry["source"], "./")
         self.assertEqual(entry["version"], plugin["version"])
         self.assertEqual(entry["description"], plugin["description"])
+        self.assertEqual(entry["license"], plugin["license"])
